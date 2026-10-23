@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+# Per-task cache used only to resume interrupted runs; the CSVs hold the data.
+results/cache/
+results_quick/

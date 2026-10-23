@@ -1,0 +1,68 @@
+tuning: 600 tasks, 4800 trials
+  0 tasks cached, 600 to run
+  30/600 tasks
+  60/600 tasks
+  90/600 tasks
+  120/600 tasks
+  150/600 tasks
+  180/600 tasks
+  210/600 tasks
+  240/600 tasks
+  270/600 tasks
+  300/600 tasks
+  330/600 tasks
+  360/600 tasks
+  390/600 tasks
+  420/600 tasks
+  450/600 tasks
+  480/600 tasks
+  510/600 tasks
+  540/600 tasks
+  570/600 tasks
+  600/600 tasks
+tuning done (6271s)
+type_a: 600 tasks, 12000 trials
+  0 tasks cached, 600 to run
+  30/600 tasks
+  60/600 tasks
+  90/600 tasks
+  120/600 tasks
+  150/600 tasks
+  180/600 tasks
+  210/600 tasks
+  240/600 tasks
+  270/600 tasks
+  300/600 tasks
+  330/600 tasks
+  360/600 tasks
+  390/600 tasks
+  420/600 tasks
+  450/600 tasks
+  480/600 tasks
+  510/600 tasks
+  540/600 tasks
+  570/600 tasks
+  600/600 tasks
+type_b: 400 tasks, 8000 trials
+  0 tasks cached, 400 to run
+  20/400 tasks
+  40/400 tasks
+  60/400 tasks
+  80/400 tasks
+  100/400 tasks
+  120/400 tasks
+  140/400 tasks
+  160/400 tasks
+  180/400 tasks
+  200/400 tasks
+  220/400 tasks
+  240/400 tasks
+  260/400 tasks
+  280/400 tasks
+  300/400 tasks
+  320/400 tasks
+  340/400 tasks
+  360/400 tasks
+  380/400 tasks
+  400/400 tasks
+evaluation done (15992s)
