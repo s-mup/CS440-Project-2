@@ -137,21 +137,56 @@ class Ship:
         return f"Ship(shape={self.shape}, open_cells={self.n})"
 
 
+class _IndexedSet:
+    """Set of cells with O(1) add, remove and uniform random choice."""
+
+    def __init__(self):
+        self.items: list[tuple[int, int]] = []
+        self.pos: dict[tuple[int, int], int] = {}
+
+    def __len__(self):
+        return len(self.items)
+
+    def __contains__(self, cell):
+        return cell in self.pos
+
+    def add(self, cell):
+        if cell not in self.pos:
+            self.pos[cell] = len(self.items)
+            self.items.append(cell)
+
+    def discard(self, cell):
+        i = self.pos.pop(cell, None)
+        if i is None:
+            return
+        last = self.items.pop()
+        if i < len(self.items):
+            self.items[i] = last
+            self.pos[last] = i
+
+    def choice(self, rng: np.random.Generator):
+        return self.items[int(rng.integers(len(self.items)))]
+
+
 def generate_ship(D: int, rng: np.random.Generator,
                   dead_end_fraction: float = 0.5) -> Ship:
-    """Generate a D x D ship with the Project 1 algorithm.
+    """Generate a D x D ship with the Project 1 algorithm (team version).
 
     1. Start with every cell blocked; open one random interior cell.
     2. Repeatedly open a uniformly random blocked cell that has exactly one
        open orthogonal neighbour, until no such cell exists (a loop-free maze).
-    3. Visit the dead ends (open cells with exactly one open neighbour) in
-       random order and, for ``dead_end_fraction`` of them, open one random
-       blocked neighbour, which adds loops.
+    3. Dead-end reduction, as in the team's Project 1 (``project_1/
+       Ship_on_Fire.py``). Let n0 be the number of dead ends (open cells with
+       exactly one open neighbour) after step 2. While more than
+       int(n0 * (1 - dead_end_fraction)) dead ends remain (n0 // 2 with the
+       default 0.5), pick a uniformly random *current* dead end and open one
+       random blocked neighbour of it. Dead ends are recounted after every
+       opening, so ones created by an opening also count, and the final number
+       really is at most half of the original.
 
-    This produces the same distribution of ships as Project 1's ``ship.py``. The
-    only difference is speed: the set of eligible cells is maintained
-    incrementally instead of rescanning the grid on each step (O(D^2) total
-    instead of O(D^4)).
+    This gives the same distribution of ships as Project 1. The only
+    difference is speed: the eligible cells and the dead ends are kept up to
+    date incrementally, instead of rescanning the grid after every opening.
     """
     if D < 3:
         raise ValueError("D must be at least 3")
@@ -160,8 +195,8 @@ def generate_ship(D: int, rng: np.random.Generator,
 
     grid = np.zeros((D, D), dtype=bool)
     open_nbrs = np.zeros((D, D), dtype=np.int8)  # open orthogonal neighbours
-    frontier: list[tuple[int, int]] = []         # blocked, exactly 1 open nbr
-    pos: dict[tuple[int, int], int] = {}
+    frontier = _IndexedSet()                     # blocked, exactly 1 open nbr
+    dead_ends = _IndexedSet()                    # open, exactly 1 open nbr
 
     def nbrs(r, c):
         for dr, dc in N4:
@@ -169,46 +204,33 @@ def generate_ship(D: int, rng: np.random.Generator,
             if 0 <= nr < D and 0 <= nc < D:
                 yield nr, nc
 
-    def frontier_add(cell):
-        pos[cell] = len(frontier)
-        frontier.append(cell)
-
-    def frontier_remove(cell):
-        i = pos.pop(cell)
-        last = frontier.pop()
-        if i < len(frontier):
-            frontier[i] = last
-            pos[last] = i
+    def refresh(r, c):
+        """Re-file one cell into the frontier / dead-end sets."""
+        one = open_nbrs[r, c] == 1
+        if grid[r, c]:
+            frontier.discard((r, c))
+            (dead_ends.add if one else dead_ends.discard)((r, c))
+        else:
+            (frontier.add if one else frontier.discard)((r, c))
 
     def open_cell(r, c):
         grid[r, c] = True
-        if (r, c) in pos:
-            frontier_remove((r, c))
         for nr, nc in nbrs(r, c):
             open_nbrs[nr, nc] += 1
-            if not grid[nr, nc]:
-                if open_nbrs[nr, nc] == 1:
-                    frontier_add((nr, nc))
-                elif open_nbrs[nr, nc] == 2:
-                    frontier_remove((nr, nc))
+            refresh(nr, nc)
+        refresh(r, c)
 
     open_cell(int(rng.integers(1, D - 1)), int(rng.integers(1, D - 1)))
     while frontier:
-        open_cell(*frontier[int(rng.integers(len(frontier)))])
+        open_cell(*frontier.choice(rng))
 
-    dead_ends = [(r, c) for r in range(D) for c in range(D)
-                 if grid[r, c] and open_nbrs[r, c] == 1]
-    target = int(len(dead_ends) * dead_end_fraction)
-    cut = 0
-    for i in rng.permutation(len(dead_ends)):
-        if cut >= target:
-            break
-        r, c = dead_ends[i]
-        if open_nbrs[r, c] != 1:      # already fixed by an earlier opening
-            continue
-        closed = [(nr, nc) for nr, nc in nbrs(r, c) if not grid[nr, nc]]
-        if closed:
-            open_cell(*closed[int(rng.integers(len(closed)))])
-            cut += 1
+    target = int(len(dead_ends) * (1.0 - dead_end_fraction))
+    guard = 50 * D * D          # never reached in practice; prevents a hang
+    while len(dead_ends) > target and guard > 0:
+        guard -= 1
+        r, c = dead_ends.choice(rng)
+        blocked = [(nr, nc) for nr, nc in nbrs(r, c) if not grid[nr, nc]]
+        if blocked:
+            open_cell(*blocked[int(rng.integers(len(blocked)))])
 
     return Ship(grid)

@@ -73,6 +73,19 @@ class TestShipGenerator(unittest.TestCase):
 
         self.assertLess(dead_ends(braided), dead_ends(no_braid))
 
+    def test_dead_ends_reduced_to_at_most_half(self):
+        # Team Project 1 rule: keep opening a neighbour of a random current
+        # dead end until at most half of the original dead ends remain. With
+        # the same seed, fraction 0 stops right after the growth phase, so it
+        # gives the original dead-end count.
+        def dead_ends(ship):
+            return sum(len(nb) == 1 for nb in ship.neighbors)
+
+        for seed in range(5):
+            before = dead_ends(generate_ship(41, np.random.default_rng(seed), 0.0))
+            after = dead_ends(generate_ship(41, np.random.default_rng(seed)))
+            self.assertLessEqual(after, before // 2)
+
     def test_rejects_invalid_parameters(self):
         with self.assertRaises(ValueError):
             generate_ship(2, np.random.default_rng(0))

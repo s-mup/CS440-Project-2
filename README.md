@@ -86,8 +86,10 @@ and the outcome of each reading it asks for.
 
 ## Modelling decisions
 
-* **Ship.** Generated with the Project 1 algorithm: grow a maze from one cell,
-  then open one neighbour of half of the dead ends. Movement is 4-connected.
+* **Ship.** Generated with the team's Project 1 algorithm
+  (`project_1/Ship_on_Fire.py`): grow a maze from one cell, then repeatedly
+  open a blocked neighbour of a random dead end until at most half of the
+  original dead ends remain. Movement is 4-connected.
   The default size is D = 41.
 * **Placement.** The start cell and the LostBot cell are distinct and uniformly
   random. Both knowledge bases start uniform over every open cell except the start.
