@@ -148,6 +148,25 @@ def bfs(grid, start, target, grid_size):
                     
     return []
 
+def bfs_distances(grid, start, grid_size):
+    # one BFS from start: number of moves to every reachable open cell.
+    # (much faster than calling bfs() once per candidate cell)
+    dist = {start: 0}
+    queue = deque([start])
+    while queue:
+        r, c = queue.popleft()
+        for dr, dc in DIRECTIONS:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < grid_size and 0 <= nc < grid_size:
+                if grid[nr][nc] == 'OPEN' and (nr, nc) not in dist:
+                    dist[(nr, nc)] = dist[(r, c)] + 1
+                    queue.append((nr, nc))
+    return dist
+
+def nearest(cells, dist):
+    # closest cell by BFS distance, ties broken at random
+    return min(cells, key=lambda cell: (dist.get(cell, math.inf), random.random()))
+
 def baseline_a(grid, grid_size, k):
     locator_bot, lost_bot, open_cells = place_objects(grid, grid_size)
     possible_locations = set(open_cells)
@@ -183,17 +202,14 @@ def baseline_a(grid, grid_size, k):
             return {"status": "FAILED", "moves": move_count, "detectors": detector_count}
             
         # move to the nearest cell that might contain LostBot (breaking ties at random)
-        best_target = min(
-            possible_locations, 
-            key=lambda cell: (len(bfs(grid, locator_bot, cell, grid_size)), random.random())
-        )
+        best_target = nearest(possible_locations, bfs_distances(grid, locator_bot, grid_size))
         
+        # walk the whole shortest path to the target, then sense again there.
+        # (sensing after every single step would use extra detector readings
+        # and is not what the baseline describes.)
         path = bfs(grid, locator_bot, best_target, grid_size)
-        if len(path) > 1:
-            locator_bot = path[1]  # take one step along the path
-            move_count += 1
-        else:
-            locator_bot = best_target
+        move_count += len(path) - 1
+        locator_bot = best_target
 
 def baseline_b(grid, grid_size, alpha):
     locator_bot, lost_bot, open_cells = place_objects(grid, grid_size)
@@ -241,17 +257,17 @@ def baseline_b(grid, grid_size, alpha):
         max_prob = max(beliefs.values())
         top_cells = [cell for cell, prob in beliefs.items() if math.isclose(prob, max_prob, rel_tol=1e-9)]
         
-        best_target = min(
-            top_cells,
-            key=lambda cell: (len(bfs(grid, locator_bot, cell, grid_size)), random.random())
-        )
+        best_target = nearest(top_cells, bfs_distances(grid, locator_bot, grid_size))
         
+        # walk the whole shortest path to the target, then sense again there.
+        # Re-choosing the target after every single step can make the bot walk
+        # back and forth forever (seen with alpha = 2): NO PINGs on the way keep
+        # lowering the target's probability, so the most likely cell keeps
+        # switching ends. Arriving first guarantees progress: the reading at the
+        # target either finds LostBot or rules that cell out.
         path = bfs(grid, locator_bot, best_target, grid_size)
-        if len(path) > 1:
-            locator_bot = path[1]
-            move_count += 1
-        else:
-            locator_bot = best_target
+        move_count += len(path) - 1
+        locator_bot = best_target
 # ================
 
 # === IMPROVED ===
@@ -288,8 +304,8 @@ if __name__ == "__main__":
         print(f"Baseline A- {i}th Run: {base_a}")
         print(f"Baseline B- {i}th Run: {base_b}")
 
-#Run this simulation for the improved version and compare the averages across a range of k [1-d] and alpha [0.05-0.5]
-print(f"Average Moves A: {avg_moves_a:.2f}")
-print(f"Average Detectors A: {avg_detectors_a:.2f}")
-print(f"Average Moves B: {avg_moves_b:.2f}")
-print(f"Average Detectors B: {avg_detectors_b:.2f}")
+    #Run this simulation for the improved version and compare the averages across a range of k [1-d] and alpha [0.05-0.5]
+    print(f"Average Moves A: {avg_moves_a:.2f}")
+    print(f"Average Detectors A: {avg_detectors_a:.2f}")
+    print(f"Average Moves B: {avg_moves_b:.2f}")
+    print(f"Average Detectors B: {avg_detectors_b:.2f}")
