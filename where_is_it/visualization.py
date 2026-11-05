@@ -7,6 +7,8 @@ Fig 4  Free movement: mean number of detector readings vs k and vs alpha
 Fig 5  Detector B: P(ping) vs Euclidean distance for several alpha
 Fig 6  Information from a first reading vs k and vs alpha (range justification)
 Fig 7  Example search state: Type A candidate set and Type B belief heatmap
+Fig 8  Techniques tried: baseline, earlier argmin-J rule, slides' planning
+       alone, and the final strategy (slides' planning + sense on the way)
 
 Colour follows the strategy role in a fixed order (baseline, improved,
 ablation, free-movement) using a colour-blind-validated categorical palette.
@@ -33,7 +35,8 @@ from .strategies import ImprovedA, ImprovedB, Move  # noqa: E402
 from .world import World  # noqa: E402
 
 SERIES = {"baseline": "#2a78d6", "improved": "#eb6834",
-          "ablation": "#1baf7a", "free": "#eda100"}
+          "ablation": "#1baf7a", "free": "#eda100",
+          "lookahead": "#7c5cc4", "slides": "#8a8984"}
 TEXT, TEXT2, MUTED = "#0b0b0b", "#52514e", "#8a8984"
 SURFACE, GRID = "#fcfcfb", "#e6e5e0"
 BLUES = ["#c9def5", "#94bdeb", "#5b98dd", "#2a78d6", "#1d5aa6", "#123c73"]
@@ -46,6 +49,10 @@ def role(strategy: str) -> str:
         return "improved"
     if strategy.startswith("free"):
         return "free"
+    if strategy.startswith("lookahead"):
+        return "lookahead"
+    if strategy.startswith("slides"):
+        return "slides"
     return "ablation"
 
 
@@ -113,6 +120,33 @@ def fig_cost_vs_param(summary, kind, out: Path):
     ax.set_ylim(bottom=0)
     ax.legend(loc="upper center" if kind == "A" else "upper right")
     n = int(summary[0]["cost_original_n"])
+    fig.text(0.01, 0.005, f"Shaded band: 95% CI of the mean, {n} paired trials per point.",
+             color=MUTED, fontsize=8)
+    fig.tight_layout(rect=(0, 0.03, 1, 1))
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+
+
+def fig_techniques(summary_a, summary_b, out: Path):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
+    for ax, summ, kind in ((axes[0], summary_a, "A"), (axes[1], summary_b, "B")):
+        k = kind.lower()
+        sts = [s for s in (f"baseline_{k}", f"lookahead_{k}", f"slides_pure_{k}",
+                           f"improved_{k}") if any(r["strategy"] == s for r in summ)]
+        _cost_lines(ax, summ, sts, "cost_original", logx=(kind == "B"))
+        ax.set_yscale("log")
+        ax.yaxis.set_major_locator(LogLocator(base=10, subs=(1, 2, 5)))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+        ax.yaxis.set_minor_formatter(NullFormatter())
+        ax.set_ylabel("Mean cost (log scale)")
+        if kind == "A":
+            ax.set_xlabel("k")
+            ax.set_title("Detector A: techniques tried")
+        else:
+            ax.set_xlabel("alpha (log scale)")
+            ax.set_title("Detector B: techniques tried")
+        ax.legend(loc="upper center" if kind == "A" else "upper left", fontsize=8)
+    n = int(summary_a[0]["cost_original_n"])
     fig.text(0.01, 0.005, f"Shaded band: 95% CI of the mean, {n} paired trials per point.",
              color=MUTED, fontsize=8)
     fig.tight_layout(rect=(0, 0.03, 1, 1))
@@ -323,4 +357,5 @@ def make_all_figures(out_dir: Path) -> None:
     fig_ping_probability(fig_dir / "fig5_ping_probability.png")
     fig_information(info, fig_dir / "fig6_information_vs_parameter.png")
     fig_example_state(out_dir, fig_dir / "fig7_example_search_state.png")
+    fig_techniques(sa, sb, fig_dir / "fig8_techniques_tried.png")
     print(f"wrote figures to {fig_dir}")

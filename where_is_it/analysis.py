@@ -31,11 +31,15 @@ COSTS = ("cost_original", "cost_free")
 BASELINE = {"A": "baseline_a", "B": "baseline_b"}
 LABELS = {
     "baseline_a": "Baseline A",
-    "improved_a": "Improved A (expected-cost lookahead)",
+    "improved_a": "Improved A (slides' sampled planning + sense on the way)",
+    "lookahead_a": "Tried A0 (global argmin-J lookahead)",
+    "slides_pure_a": "Tried A-S (slides' planning only)",
     "info_per_cost_a": "Ablation A1 (info gain per cost)",
     "free_movement_a": "Free-movement A (max info gain)",
     "baseline_b": "Baseline B",
-    "improved_b": "Improved B (expected-cost lookahead)",
+    "improved_b": "Improved B (slides' sampled planning + sense on the way)",
+    "lookahead_b": "Tried B0 (global argmin-J lookahead)",
+    "slides_pure_b": "Tried B-S (slides' planning only)",
     "prob_per_cost_b": "Ablation B3 (probability per cost)",
     "free_movement_b": "Free-movement B (max info gain)",
 }
