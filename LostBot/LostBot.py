@@ -271,8 +271,11 @@ def baseline_b(grid, grid_size, alpha):
 # ================
 
 # === IMPROVED ===
-# add improved versions of locator bot A and B here
-
+# This file is a standalone check of the two baselines only. It shares no
+# code with the main project, and it was used to cross-check the baseline
+# costs in the report. The improved strategies are in
+# where_is_it/strategies/improved_a.py and improved_b.py; run them with
+# `python main.py demo`.
 # ================
 
 # === EXECUTION ===
@@ -301,8 +304,8 @@ if __name__ == "__main__":
         avg_moves_b = total_moves_b / 10
         avg_detectors_b = total_detectors_b / 10
         
-        print(f"Baseline A- {i}th Run: {base_a}")
-        print(f"Baseline B- {i}th Run: {base_b}")
+        print(f"Baseline A - run {i}: {base_a}")
+        print(f"Baseline B - run {i}: {base_b}")
 
     #Run this simulation for the improved version and compare the averages across a range of k [1-d] and alpha [0.05-0.5]
     print(f"Average Moves A: {avg_moves_a:.2f}")

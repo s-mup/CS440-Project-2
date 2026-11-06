@@ -1,6 +1,7 @@
 """Sampled expected-cost planning ("where should we search next?").
 
-This implements the decision method from the course slides (RL-8):
+This uses the decision method that the TA presented in the recitation 8 slides
+(RL-8). Steps:
 
 1. **Sample hypothetical LostBot locations** (HLBs) from the current belief
    (slide 13). A sample is a plausible scenario, not a claim about where the
@@ -19,7 +20,7 @@ This implements the decision method from the course slides (RL-8):
    cheaper order. Ties go to the nearer cell, then are broken at random.
 
 With m = 0 (free movement) the comparison reduces to "search the more likely
-cell first", the highest-probability-first rule of slides 7-8.
+cell first", the highest-probability-first rule of slides 7-8 from recitation 8.
 
 d(., .) is the *walking* distance through the ship (number of moves). Walls
 block straight lines, so this is the precomputed shortest-walk table
@@ -38,8 +39,8 @@ def sample_pairs(p: np.ndarray, n_pairs: int,
     support = np.flatnonzero(p > 0)
     if len(support) < 2:
         raise ValueError("need at least two possible cells to form a pair")
-    w = p[support]
-    q = w / w.sum()
+    W = p[support]
+    q = W / W.sum()
     first = rng.choice(len(support), size=n_pairs, p=q)
     second = rng.choice(len(support), size=n_pairs, p=q)
     # The second cell must differ from the first, i.e. it is drawn from the
@@ -53,25 +54,25 @@ def sample_pairs(p: np.ndarray, n_pairs: int,
             break
         second[clash] = rng.choice(len(support), size=len(clash), p=q)
     for i in np.flatnonzero(first == second):
-        rest = w.copy()
+        rest = W.copy()
         rest[first[i]] = 0.0
         second[i] = rng.choice(len(support), p=rest / rest.sum())
     return support[first], support[second]
 
 
-def pair_plan_costs(position: int, h1: np.ndarray, h2: np.ndarray,
+def pair_plan_costs(position: int, H1: np.ndarray, H2: np.ndarray,
                     p: np.ndarray, dist: np.ndarray, move_cost: float,
                     sense_cost: float) -> tuple[np.ndarray, np.ndarray]:
     """Expected cost of searching HLB1 first and of searching HLB2 first,
     conditioned on the LostBot being at one of the two (slides 15-16)."""
-    p1, p2 = p[h1], p[h2]
-    w1 = p1 / (p1 + p2)
-    w2 = 1.0 - w1
-    d_c1 = dist[position, h1].astype(np.float64)
-    d_c2 = dist[position, h2].astype(np.float64)
-    d_12 = dist[h1, h2].astype(np.float64)
-    cost_1_first = (move_cost * d_c1 + sense_cost) + w2 * (move_cost * d_12 + sense_cost)
-    cost_2_first = (move_cost * d_c2 + sense_cost) + w1 * (move_cost * d_12 + sense_cost)
+    p1, p2 = p[H1], p[H2]
+    W1 = p1 / (p2 + p1)
+    W2 = 1.0 - W1
+    d_c1 = dist[position, H1].astype(np.float64)
+    d_c2 = dist[position, H2].astype(np.float64)
+    d_12 = dist[H1, H2].astype(np.float64)
+    cost_1_first = W2 * (move_cost * d_12 + sense_cost) + (move_cost * d_c1 + sense_cost)
+    cost_2_first = (move_cost * d_c2 + sense_cost) + W1 * (move_cost * d_12 + sense_cost)
     return cost_1_first, cost_2_first
 
 
@@ -89,9 +90,9 @@ def plan_destination(p: np.ndarray, position: int, dist: np.ndarray,
         raise ValueError("belief has no possible cells")
     if len(support) == 1:
         return int(support[0])
-    h1, h2 = sample_pairs(p, n_pairs, rng)
-    c1, c2 = pair_plan_costs(position, h1, h2, p, dist, move_cost, sense_cost)
-    winners = np.where(c1 <= c2, h1, h2)
+    H1, H2 = sample_pairs(p, n_pairs, rng)
+    c1, c2 = pair_plan_costs(position, H1, H2, p, dist, move_cost, sense_cost)
+    winners = np.where(c1 <= c2, H1, H2)
     votes = np.bincount(winners, minlength=len(p))
     best = np.flatnonzero(votes == votes.max())
     d = dist[position, best]
