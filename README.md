@@ -102,8 +102,8 @@ Hyper-parameters (c, and gamma for Type A) are tuned separately for
 
 ## Modelling decisions
 
-* **Ship.** Generated with the team's Project 1 algorithm
-  (`project_1/Ship_on_Fire.py`): grow a maze from one cell, then repeatedly
+* **Ship.** Generated with the team's Project 1 ship generator (Sahas's
+  algorithm, re-implemented for speed): grow a maze from one cell, then repeatedly
   open a blocked neighbour of a random dead end until at most half of the
   original dead ends remain. Movement is 4-connected.
   The default size is D = 41.

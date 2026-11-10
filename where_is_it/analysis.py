@@ -1,6 +1,6 @@
 """Summary statistics computed from the experiment CSVs.
 
-All numbers in the report come from the files this module writes:
+All numbers in the report come from the following files:
     summary_type_a.csv / summary_type_b.csv   per (strategy, k|alpha) statistics
     paired_type_a.csv  / paired_type_b.csv    paired comparison vs the baseline
     best_configs.csv                          most efficient k / alpha per strategy
@@ -8,7 +8,7 @@ All numbers in the report come from the files this module writes:
     summary.md                                the same tables as Markdown
 
 Statistics: mean, median, sample std, min, max, and a 95% confidence interval
-for the mean (normal approximation, 1.96 * s / sqrt(n); n = 300 per point).
+for the mean (normal approximation, 1.96 * s / sqrt(n); n = 200 per point).
 Comparisons with the baseline are *paired*: each trial of strategy X shares its
 ship, start, LostBot, and detector-noise seed with a baseline trial. The CI of
 the mean paired difference is therefore much tighter than comparing two
