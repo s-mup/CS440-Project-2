@@ -79,10 +79,6 @@ class Ship:
         r, c = self.cells[index]
         return int(r), int(c)
 
-    def is_open(self, r: int, c: int) -> bool:
-        H, W = self.shape
-        return 0 <= r < H and 0 <= c < W and bool(self.grid[r, c])
-
     # ------------------------------------------------------------------ #
     # Pairwise geometry (computed once per ship, then cached)
     # ------------------------------------------------------------------ #

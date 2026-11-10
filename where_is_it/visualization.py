@@ -29,7 +29,7 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap  # noqa: E
 from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter  # noqa: E402
 
 from .analysis import LABELS  # noqa: E402
-from .detectors import DetectorA, DetectorB, Outcome  # noqa: E402
+from .detectors import DetectorA, DetectorB  # noqa: E402
 from .experiments import EVAL_SETUP, make_scenarios, make_ship  # noqa: E402
 from .strategies import ImprovedA, ImprovedB, Move  # noqa: E402
 from .world import World  # noqa: E402

@@ -25,6 +25,13 @@ python main.py demo --detector A --k 2 --D 15 --show
 
 # Report cost as detector uses only (free movement)
 python main.py demo --detector B --alpha 0.2 --free-movement
+
+# Our final strategy (uses the tuned settings in results/tuned_params.json)
+python main.py demo --detector A --k 13 --strategy final
+python main.py demo --detector B --alpha 0.1 --strategy final
+
+# The free-movement strategy (Question 6; cost = detector uses)
+python main.py demo --detector A --k 13 --strategy free
 ```
 
 ## Reproducing the experiments
@@ -102,7 +109,7 @@ Hyper-parameters (c, and gamma for Type A) are tuned separately for
 
 ## Modelling decisions
 
-* **Ship.** Generated with the team's Project 1 ship generator (Sahas's
+* **Ship.** Created with the team's Project 1 ship generator (Sahas's
   algorithm, re-implemented for speed): grow a maze from one cell, then repeatedly
   open a blocked neighbour of a random dead end until at most half of the
   original dead ends remain. Movement is 4-connected.

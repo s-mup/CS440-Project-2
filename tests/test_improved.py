@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from where_is_it.detectors import DetectorA, DetectorB, Outcome
-from where_is_it.knowledge_base import BeliefKB, CandidateSetKB
+from where_is_it.knowledge_base import CandidateSetKB
 from where_is_it.scoring import (BeliefScorer, CandidateScorer, get_scorer)
 from where_is_it.ship import Ship
 from where_is_it.strategies import (FreeMovementA, FreeMovementB, ImprovedA,
