@@ -14,6 +14,8 @@ from abc import abstractmethod
 
 import numpy as np
 
+from ..pathfinding import shortest_path
+from ..planning import plan_destination
 from ..scoring import SensingScores, get_scorer
 from .base import PathFollowingStrategy
 
@@ -55,6 +57,30 @@ class ScoredStrategy(PathFollowingStrategy):
     @abstractmethod
     def select(self, position: int, sc: SensingScores) -> int:
         ...
+
+    def plan_and_sense_point(self, position: int, sc: SensingScores,
+                             J: np.ndarray, n_pairs: int) -> int:
+        """Slides' decision method (RL-8).
+
+        1. Slides 13-16: choose the destination with sampled pairwise
+           expected-cost plans over hypothetical LostBot locations
+           (``planning.plan_destination``).
+        2. Slide 17 ("do we have to travel all the way to a likely cell?"):
+           among the cells on the walking route to that destination, including
+           the current cell and the destination, sense at the one with the
+           lowest estimated total cost J (movement + reading + future cost).
+           Inadmissible cells have J = inf. The destination is always
+           admissible, because it may hold the LostBot.
+        """
+        target = plan_destination(sc.p_found, position, self.dist, self.rng,
+                                  self.move_cost, self.sense_cost, n_pairs)
+        route = [position] + shortest_path(self.ship.neighbors, self.dist,
+                                           position, target)
+        route = np.array(route)
+        costs = J[route]
+        if not np.isfinite(costs).any():
+            return target
+        return int(route[int(np.argmin(costs))])
 
 
 def expected_cost_objective(sc: SensingScores, d_from_here: np.ndarray, *,

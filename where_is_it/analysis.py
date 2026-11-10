@@ -1,6 +1,6 @@
 """Summary statistics computed from the experiment CSVs.
 
-All numbers in the report come from the files this module writes:
+All numbers in the report come from the following files:
     summary_type_a.csv / summary_type_b.csv   per (strategy, k|alpha) statistics
     paired_type_a.csv  / paired_type_b.csv    paired comparison vs the baseline
     best_configs.csv                          most efficient k / alpha per strategy
@@ -8,7 +8,7 @@ All numbers in the report come from the files this module writes:
     summary.md                                the same tables as Markdown
 
 Statistics: mean, median, sample std, min, max, and a 95% confidence interval
-for the mean (normal approximation, 1.96 * s / sqrt(n); n = 300 per point).
+for the mean (normal approximation, 1.96 * s / sqrt(n); n = 200 per point).
 Comparisons with the baseline are *paired*: each trial of strategy X shares its
 ship, start, LostBot, and detector-noise seed with a baseline trial. The CI of
 the mean paired difference is therefore much tighter than comparing two
@@ -31,11 +31,15 @@ COSTS = ("cost_original", "cost_free")
 BASELINE = {"A": "baseline_a", "B": "baseline_b"}
 LABELS = {
     "baseline_a": "Baseline A",
-    "improved_a": "Improved A (expected-cost lookahead)",
+    "improved_a": "Improved A (slides' sampled planning + sense on the way)",
+    "lookahead_a": "Tried A0 (global argmin-J lookahead)",
+    "slides_pure_a": "Tried A-S (slides' planning only)",
     "info_per_cost_a": "Ablation A1 (info gain per cost)",
     "free_movement_a": "Free-movement A (max info gain)",
     "baseline_b": "Baseline B",
-    "improved_b": "Improved B (expected-cost lookahead)",
+    "improved_b": "Improved B (slides' sampled planning + sense on the way)",
+    "lookahead_b": "Tried B0 (global argmin-J lookahead)",
+    "slides_pure_b": "Tried B-S (slides' planning only)",
     "prob_per_cost_b": "Ablation B3 (probability per cost)",
     "free_movement_b": "Free-movement B (max info gain)",
 }

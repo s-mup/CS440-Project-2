@@ -79,10 +79,6 @@ class Ship:
         r, c = self.cells[index]
         return int(r), int(c)
 
-    def is_open(self, r: int, c: int) -> bool:
-        H, W = self.shape
-        return 0 <= r < H and 0 <= c < W and bool(self.grid[r, c])
-
     # ------------------------------------------------------------------ #
     # Pairwise geometry (computed once per ship, then cached)
     # ------------------------------------------------------------------ #
@@ -175,8 +171,8 @@ def generate_ship(D: int, rng: np.random.Generator,
     1. Start with every cell blocked; open one random interior cell.
     2. Repeatedly open a uniformly random blocked cell that has exactly one
        open orthogonal neighbour, until no such cell exists (a loop-free maze).
-    3. Dead-end reduction, as in the team's Project 1 (``project_1/
-       Ship_on_Fire.py``). Let n0 be the number of dead ends (open cells with
+    3. Dead-end reduction, as in the team's Project 1 ship generator
+       (Sahas's implementation). Let n0 be the number of dead ends (open cells with
        exactly one open neighbour) after step 2. While more than
        int(n0 * (1 - dead_end_fraction)) dead ends remain (n0 // 2 with the
        default 0.5), pick a uniformly random *current* dead end and open one

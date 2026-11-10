@@ -4,13 +4,17 @@ Examples:
     python main.py demo --detector A --k 3
     python main.py demo --detector B --alpha 0.1 --trials 20 --D 41 --seed 7
     python main.py demo --detector A --k 2 --D 15 --show
+    python main.py demo --detector A --k 13 --strategy final
+    python main.py demo --detector B --alpha 0.2 --strategy free
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import statistics
 import time
+from pathlib import Path
 
 # Parallelism comes from worker processes, so each process uses one BLAS
 # thread. This must be set before numpy is imported; workers inherit it.
@@ -21,9 +25,41 @@ import numpy as np  # noqa: E402
 
 from where_is_it.detectors import DetectorA, DetectorB
 from where_is_it.ship import generate_ship
-from where_is_it.strategies import BaselineA, BaselineB
+from where_is_it.strategies import (BaselineA, BaselineB, FreeMovementA,
+                                    FreeMovementB, ImprovedA, ImprovedB)
 from where_is_it.world import (FREE_MOVEMENT_COST, ORIGINAL_COST, run_trial,
                                sample_scenario)
+
+
+def tuned_settings(detector: str, param, path: Path) -> dict:
+    """Tuned c (and gamma for Type A) for the final strategy at this k or
+    alpha, from the tuning run. Untested values fall back to the defaults."""
+    try:
+        with open(path) as f:
+            return json.load(f)[detector][str(param)]["kwargs"]
+    except (OSError, KeyError):
+        print(f"note: no tuned settings for {detector} at {param} in {path}; "
+              "using defaults")
+        return {}
+
+
+def make_demo_strategy(args: argparse.Namespace):
+    """Detector, strategy and cost model chosen on the command line."""
+    if args.detector == "A":
+        detector, param = DetectorA(args.k), args.k
+        classes = {"baseline": BaselineA, "final": ImprovedA, "free": FreeMovementA}
+    else:
+        detector, param = DetectorB(args.alpha), args.alpha
+        classes = {"baseline": BaselineB, "final": ImprovedB, "free": FreeMovementB}
+    if args.strategy == "final":
+        settings = tuned_settings(args.detector, param, Path(args.tuned))
+        strategy = classes["final"](**settings)
+    else:
+        strategy = classes[args.strategy]()
+    # The free-movement strategy is meant for the Question 6 cost model.
+    free = args.free_movement or args.strategy == "free"
+    cost_model = FREE_MOVEMENT_COST if free else ORIGINAL_COST
+    return detector, strategy, cost_model
 
 
 def cmd_demo(args: argparse.Namespace) -> None:
@@ -31,11 +67,7 @@ def cmd_demo(args: argparse.Namespace) -> None:
     ship_ss, scenario_ss, trials_ss = np.random.SeedSequence(args.seed).spawn(3)
     ship = generate_ship(args.D, np.random.default_rng(ship_ss))
 
-    if args.detector == "A":
-        detector, strategy = DetectorA(args.k), BaselineA()
-    else:
-        detector, strategy = DetectorB(args.alpha), BaselineB()
-    cost_model = FREE_MOVEMENT_COST if args.free_movement else ORIGINAL_COST
+    detector, strategy, cost_model = make_demo_strategy(args)
 
     t0 = time.perf_counter()
     _ = ship.bfs_dist  # one-time all-pairs BFS, shared by every trial
@@ -132,8 +164,14 @@ def main() -> None:
     ana.add_argument("--out", default="results")
     ana.set_defaults(func=cmd_analyze)
 
-    demo = sub.add_parser("demo", help="run a baseline strategy on random trials")
+    demo = sub.add_parser("demo", help="run one strategy on random trials")
     demo.add_argument("--detector", choices=["A", "B"], default="A")
+    demo.add_argument("--strategy", choices=["baseline", "final", "free"],
+                      default="baseline",
+                      help="baseline, our final strategy (tuned settings), "
+                           "or the free-movement strategy (Question 6)")
+    demo.add_argument("--tuned", default="results/tuned_params.json",
+                      help="tuned settings used by --strategy final")
     demo.add_argument("--k", type=int, default=3, help="Type A square radius")
     demo.add_argument("--alpha", type=float, default=0.1, help="Type B decay rate")
     demo.add_argument("--D", type=int, default=41, help="ship is D x D")

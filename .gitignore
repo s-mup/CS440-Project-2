@@ -3,3 +3,4 @@ __pycache__/
 # Per-task cache used only to resume interrupted runs; the CSVs hold the data.
 results/cache/
 results_quick/
+results_backup_old_rule/

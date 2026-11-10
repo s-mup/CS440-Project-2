@@ -32,7 +32,8 @@ import numpy as np
 from .detectors import DetectorA, DetectorB
 from .ship import generate_ship
 from .strategies import (BaselineA, BaselineB, FreeMovementA, FreeMovementB,
-                         ImprovedA, ImprovedB, InfoPerCostA, ProbPerCostB)
+                         ImprovedA, ImprovedB, InfoPerCostA, LookaheadA,
+                         LookaheadB, ProbPerCostB, SlidesPureA, SlidesPureB)
 from .world import FREE_MOVEMENT_COST, ORIGINAL_COST, run_trial
 
 K_VALUES = [0, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40]
@@ -45,10 +46,14 @@ TUNE_GRID_B = [{"c": c} for c in (1, 3, 10, 30, 100)]
 STRATEGIES = {
     "baseline_a": BaselineA,
     "improved_a": ImprovedA,
+    "lookahead_a": LookaheadA,
+    "slides_pure_a": SlidesPureA,
     "info_per_cost_a": InfoPerCostA,
     "free_movement_a": FreeMovementA,
     "baseline_b": BaselineB,
     "improved_b": ImprovedB,
+    "lookahead_b": LookaheadB,
+    "slides_pure_b": SlidesPureB,
     "prob_per_cost_b": ProbPerCostB,
     "free_movement_b": FreeMovementB,
 }
@@ -235,21 +240,29 @@ def read_csv(path: Path) -> list[dict]:
 # --------------------------------------------------------------------------- #
 def tune(out_dir: Path, setup: Setup = TUNE_SETUP, processes=None,
          k_values=K_VALUES, alpha_values=ALPHA_VALUES) -> dict:
-    """Grid-search ImprovedA (c, gamma) per k and ImprovedB c per alpha, on
-    tuning seeds only. The criterion is mean original cost; a capped trial
-    counts at its capped cost, which is a heavy penalty."""
+    """Grid-search (c, gamma) per k for Type A and c per alpha for Type B, on
+    tuning seeds only, separately for the final strategies (improved_*, the
+    slides' planner) and for the earlier rule they replaced (lookahead_*).
+    The criterion is mean original cost; a capped trial counts at its capped
+    cost, which is a heavy penalty."""
     tasks = []
-    for kw in TUNE_GRID_B:
-        tasks += build_tasks(setup, "tune", "B", alpha_values, "improved_b", lambda p, kw=kw: kw)
-    for kw in TUNE_GRID_A:
-        tasks += build_tasks(setup, "tune", "A", k_values, "improved_a", lambda p, kw=kw: kw)
+    for strat in ("improved", "lookahead"):
+        for kw in TUNE_GRID_B:
+            tasks += build_tasks(setup, "tune", "B", alpha_values, f"{strat}_b",
+                                 lambda p, kw=kw: kw)
+        for kw in TUNE_GRID_A:
+            tasks += build_tasks(setup, "tune", "A", k_values, f"{strat}_a",
+                                 lambda p, kw=kw: kw)
     print(f"tuning: {len(tasks)} tasks, {len(tasks) * setup.scenarios_per_ship} trials")
     rows = run_tasks(tasks, processes, cache_dir=out_dir / "cache")
     write_csv(rows, out_dir / "tuning.csv")
-    return select_tuned(rows, out_dir)
+    select_tuned([r for r in rows if r["strategy"].startswith("lookahead")],
+                 out_dir / "tuned_params_lookahead.json")
+    return select_tuned([r for r in rows if r["strategy"].startswith("improved")],
+                        out_dir / "tuned_params.json")
 
 
-def select_tuned(rows: list[dict], out_dir: Path) -> dict:
+def select_tuned(rows: list[dict], path: Path) -> dict:
     groups: dict = {}
     for r in rows:
         key = (r["detector"], r["param"], r["hyper"])
@@ -260,7 +273,7 @@ def select_tuned(rows: list[dict], out_dir: Path) -> dict:
         cur = best[kind].get(str(param))
         if cur is None or m < cur["mean_cost"]:
             best[kind][str(param)] = {"kwargs": json.loads(hyper), "mean_cost": m}
-    with open(out_dir / "tuned_params.json", "w") as f:
+    with open(path, "w") as f:
         json.dump(best, f, indent=2, sort_keys=True)
     return best
 
@@ -269,17 +282,26 @@ def evaluate(out_dir: Path, tuned: dict, setup: Setup = EVAL_SETUP,
              processes=None, k_values=K_VALUES, alpha_values=ALPHA_VALUES) -> None:
     """Main sweeps. Every strategy runs on the same scenarios; both cost models
     are stored per trial (Question 6 reuses these runs)."""
-    def tuned_kw(kind):
-        return lambda p: tuned[kind][str(p)]["kwargs"]
+    with open(out_dir / "tuned_params_lookahead.json") as f:
+        tuned_look = json.load(f)
+
+    def tuned_kw(kind, table=tuned):
+        return lambda p: table[kind][str(p)]["kwargs"]
 
     tasks_b = (build_tasks(setup, "type_b", "B", alpha_values, "improved_b", tuned_kw("B"))
                + build_tasks(setup, "type_b", "B", alpha_values, "free_movement_b")
                + build_tasks(setup, "type_b", "B", alpha_values, "baseline_b")
-               + build_tasks(setup, "type_b", "B", alpha_values, "prob_per_cost_b"))
+               + build_tasks(setup, "type_b", "B", alpha_values, "prob_per_cost_b")
+               + build_tasks(setup, "type_b", "B", alpha_values, "lookahead_b",
+                             tuned_kw("B", tuned_look))
+               + build_tasks(setup, "type_b", "B", alpha_values, "slides_pure_b"))
     tasks_a = (build_tasks(setup, "type_a", "A", k_values, "improved_a", tuned_kw("A"))
                + build_tasks(setup, "type_a", "A", k_values, "info_per_cost_a")
                + build_tasks(setup, "type_a", "A", k_values, "free_movement_a")
-               + build_tasks(setup, "type_a", "A", k_values, "baseline_a"))
+               + build_tasks(setup, "type_a", "A", k_values, "baseline_a")
+               + build_tasks(setup, "type_a", "A", k_values, "lookahead_a",
+                             tuned_kw("A", tuned_look))
+               + build_tasks(setup, "type_a", "A", k_values, "slides_pure_a"))
     for name, tasks in (("type_a", tasks_a), ("type_b", tasks_b)):
         print(f"{name}: {len(tasks)} tasks, {len(tasks) * setup.scenarios_per_ship} trials")
         write_csv(run_tasks(tasks, processes, cache_dir=out_dir / "cache"),

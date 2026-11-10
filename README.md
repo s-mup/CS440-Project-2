@@ -25,6 +25,13 @@ python main.py demo --detector A --k 2 --D 15 --show
 
 # Report cost as detector uses only (free movement)
 python main.py demo --detector B --alpha 0.2 --free-movement
+
+# Our final strategy (uses the tuned settings in results/tuned_params.json)
+python main.py demo --detector A --k 13 --strategy final
+python main.py demo --detector B --alpha 0.1 --strategy final
+
+# The free-movement strategy (Question 6; cost = detector uses)
+python main.py demo --detector A --k 13 --strategy free
 ```
 
 ## Reproducing the experiments
@@ -62,8 +69,9 @@ python -m unittest discover -s tests -v
 | `where_is_it/detectors.py` | Detector models A (square, radius k) and B (`exp(-α(d-1))`); outcomes FOUND / PING / NO_PING |
 | `where_is_it/knowledge_base.py` | `CandidateSetKB` (Type A set) and `BeliefKB` (Type B log-space Bayesian belief) |
 | `where_is_it/world.py` | Hidden LostBot location, action execution, cost counters, `run_trial`, scenario sampling |
+| `where_is_it/planning.py` | Course-slides (RL-8) planner: samples pairs of hypothetical LostBot locations from the belief, compares visiting orders by expected cost, and picks the next destination |
 | `where_is_it/scoring.py` | Vectorised evaluation of every sensing cell: P(found / ping / no ping), expected posterior entropy, info gain, expected distance |
-| `where_is_it/strategies/` | `base.py` (interface), `baseline_a/b.py`, `improved_a/b.py` (main strategies + ablations), `scored.py` (shared objective), `free_movement_a/b.py` |
+| `where_is_it/strategies/` | `base.py` (interface), `baseline_a/b.py`, `improved_a/b.py` (final strategies, techniques tried, ablations), `scored.py` (shared objective and slides-planner glue), `free_movement_a/b.py` |
 | `where_is_it/experiments.py` | Seeded, paired, parallel, resumable experiment runner |
 | `where_is_it/analysis.py` | Statistics, paired comparisons, best configurations, detector-information profile |
 | `where_is_it/visualization.py` | Figures 1-7 |
@@ -84,10 +92,25 @@ Strategy ──owns──> KnowledgeBase ──uses──> Detector model (publi
 A strategy never receives the `World`. It only sees the map, its own position,
 and the outcome of each reading it asks for.
 
+## Strategies compared
+
+| Name | Role |
+|---|---|
+| `baseline_a`, `baseline_b` | Handout baselines |
+| `improved_a`, `improved_b` | **Final strategies.** Course-slides (RL-8) planning: sample pairs of hypothetical LostBot locations, head for the cell that most often starts the cheaper visiting order, and sense at the lowest-J cell on the way (slide 17) |
+| `slides_pure_a`, `slides_pure_b` | Technique tried: the slides' planning alone (walk to the planned cell, sense there) |
+| `lookahead_a`, `lookahead_b` | Technique tried earlier: sense at the global argmin of J, walking straight there |
+| `info_per_cost_a`, `prob_per_cost_b` | Ablations |
+| `free_movement_a`, `free_movement_b` | Question 6 (cost = readings only) |
+
+Hyper-parameters (c, and gamma for Type A) are tuned separately for
+`improved_*` (`results/tuned_params.json`) and `lookahead_*`
+(`results/tuned_params_lookahead.json`) on tuning seeds.
+
 ## Modelling decisions
 
-* **Ship.** Generated with the team's Project 1 algorithm
-  (`project_1/Ship_on_Fire.py`): grow a maze from one cell, then repeatedly
+* **Ship.** Created with the team's Project 1 ship generator (Sahas's
+  algorithm, re-implemented for speed): grow a maze from one cell, then repeatedly
   open a blocked neighbour of a random dead end until at most half of the
   original dead ends remain. Movement is 4-connected.
   The default size is D = 41.
